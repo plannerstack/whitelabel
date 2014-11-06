@@ -1,11 +1,11 @@
-var planningserver = whitelabel_prefix+'/rrrr?';
+var planningserver = config.whitelabel_prefix+'/'+config.whitelabel_plan_path+'?';
 
 String.prototype.lpad = function(padString, length) {
     var str = this;
     while (str.length < length)
         str = padString + str;
     return str;
-}
+};
 
 jQuery.unparam = function (value) {
     if (value.length > 1 && value.charAt(0) == '#'){
@@ -38,7 +38,8 @@ $(document).ready(function() {
 });
 var currentTime = new Date();
 
-var bag42 = function( request, response ) {
+var defaultGeocoders = {};
+defaultGeocoders['bag42'] = function( request, response ) {
   $.ajax({
     url: "http://bag42.nl/api/v0/geocode/json",
     dataType: "json",
@@ -51,16 +52,15 @@ var bag42 = function( request, response ) {
         label: item.formatted_address,
         value: item.formatted_address,
         latlng: item.geometry.location.lat+','+item.geometry.location.lng
-        }
+        };
       }));
     }
   });
 };
 
-
-var bliksem_geocoder = function( request, response ) {
+defaultGeocoders['bliksem'] = function( request, response ) {
   $.ajax({
-    url: whitelabel_prefix+"/geocoder/" + request.term + '*',
+    url: config.whitelabel_prefix+"/geocoder/" + request.term + '*',
     dataType: "json",
     success: function( data ) {
       response( $.map( data.features, function( item ) {
@@ -68,7 +68,7 @@ var bliksem_geocoder = function( request, response ) {
         label: item.properties.search,
         value: item.properties.search,
         latlng: item.geometry.coordinates[1]+','+item.geometry.coordinates[0]
-        }
+        };
       }));
     }
   });
@@ -76,7 +76,7 @@ var bliksem_geocoder = function( request, response ) {
 
 
 var Geocoder = Geocoder || {};
-Geocoder.geocoder = bliksem_geocoder;
+Geocoder.geocoder = defaultGeocoders[config.geocoder];
 
 switchLocale();
 
@@ -84,10 +84,10 @@ function initializeForms(){
     setupAutoComplete();
     setupDatetime();
     setupSubmit();
-    if ($( "#planner-options-from" ).val() == ''){
+    if ($( "#planner-options-from" ).val() === ''){
         $( "#planner-options-from-latlng" ).val('');
     }
-    if ($( "#planner-options-dest" ).val() == ''){
+    if ($( "#planner-options-dest" ).val() === ''){
         $( "#planner-options-dest-latlng" ).val('');
     }
 }
@@ -95,33 +95,33 @@ function initializeForms(){
 function validate(){
     var valid = true;
 
-    if ($( "#planner-options-from" ).val() == ''){
+    if ($( "#planner-options-from" ).val() === ''){
         $( "#planner-options-from-latlng" ).val('');
     }
-    if ($( "#planner-options-dest" ).val() == ''){
+    if ($( "#planner-options-dest" ).val() === ''){
         $( "#planner-options-dest-latlng" ).val('');
     }
     $( "#planner-options-from-error" ).remove();
-    if ($( "#planner-options-from" ).val() == ''){
+    if ($( "#planner-options-from" ).val() === ''){
         $( "<div class=\"alert alert-danger\" role=\"alert\" id=\"planner-options-from-error\" for=\"planner-options-from\">"+Locale.startpointEmpty+"</div>").insertAfter("#planner-options-inputgroup-from");
         $( "#planner-options-from" ).attr('aria-invalid',true);
         valid = false;
-    }else if ($( "#planner-options-from-latlng" ).val() == ''){
+    }else if ($( "#planner-options-from-latlng" ).val() === ''){
         $( "<div class=\"alert alert-danger\" role=\"alert\" id=\"planner-options-from-error\" for=\"planner-options-from\">"+Locale.noStartpointSelected+"</div>").insertAfter("#planner-options-inputgroup-from");
         $( "#planner-options-from" ).attr('aria-invalid',true);
         valid = false;
     }
     $( "#planner-options-dest-error" ).remove();
-    if ($( "#planner-options-dest" ).val() == ''){
+    if ($( "#planner-options-dest" ).val() === ''){
         $( "<div class=\"alert alert-danger\" role=\"alert\" id=\"planner-options-dest-error\" for=\"planner-options-dest\">"+Locale.destinationEmpty+"</div>").insertAfter("#planner-options-inputgroup-dest");
         $( "#planner-options-dest" ).attr('aria-invalid',true);
         valid = false;
-    }else if ($( "#planner-options-dest-latlng" ).val() == ''){
+    }else if ($( "#planner-options-dest-latlng" ).val() === ''){
         $( "<div class=\"alert alert-danger\" role=\"alert\" id=\"planner-options-dest-error\" for=\"planner-options-dest\">"+Locale.noDestinationSelected+"</div>").insertAfter("#planner-options-inputgroup-dest");
         $( "#planner-options-dest" ).attr('aria-invalid',true);
         valid = false;
     }
-    if (!valid){return valid;};
+    if (!valid){return valid;}
     $( "#planner-options-from" ).attr('aria-invalid',false);
     $( "#planner-options-dest" ).attr('aria-invalid',false);
     $( "#planner-options-time-error" ).remove();
@@ -186,13 +186,14 @@ function getPrettyDate(){
    return Locale.days[date.getDay()] + ' ' + date.getDate() + ' ' + Locale.months[date.getMonth()];
 }
 
-function makeBliksemReq(plannerreq){
-  req = {}
-  bliksemReq = {}
+var defaultRequestGenerators = {};
+
+defaultRequestGenerators['bliksem'] = function (plannerreq){
+  var bliksemReq = {};
   if (plannerreq['arriveBy']){
-    bliksemReq['arrive'] = true
+    bliksemReq['arrive'] = true;
   }else{
-    bliksemReq['depart'] = true
+    bliksemReq['depart'] = true;
   }
 
   bliksemReq['from-latlng'] = plannerreq['fromLatLng'];
@@ -200,7 +201,25 @@ function makeBliksemReq(plannerreq){
   bliksemReq['date'] = plannerreq['date'] + 'T' + plannerreq['time'];
   bliksemReq['showIntermediateStops'] = true;
   return bliksemReq;
-}
+};
+
+defaultRequestGenerators['otp'] = function (plannerreq){
+  // TODO: Just use $.extend()
+  // ?fromPlace=52.008978039788076%2C4.3608856201171875&toPlace=51.918861649083915%2C4.478302001953125&time=10%3A11am&date=11-06-2014&mode=BICYCLE_PARK%2CWALK%2CTRANSIT&maxWalkDistance=804.672&arriveBy=false&wheelchair=false&showIntermediateStops=false
+  var otpReq = {};
+  otpReq['arriveBy']              = plannerreq['arriveBy'];
+  otpReq['fromPlace']             = plannerreq['fromLatLng'];
+  otpReq['toPlace']               = plannerreq['toLatLng'];
+  otpReq['date']                  = plannerreq['date'];
+  otpReq['time']                  = plannerreq['time'];
+  otpReq['showIntermediateStops'] = plannerreq['showIntermediateStops'];
+  // TODO: Allow these to be set through the UI
+  otpReq['maxWalkDistance']       = 2000;
+  otpReq['mode']                  = 'TRANSIT,WALK';
+  return otpReq;
+};
+
+var requestGenerator = defaultRequestGenerators[config.requestGenerator];
 
 function epochtoIS08601date(epoch){
   var d = new Date(epoch);
@@ -219,7 +238,7 @@ function earlierAdvice(){
      return false;
   }
   $('#planner-advice-earlier').button('loading');
-  var minEpoch = 9999999999999
+  var minEpoch = 9999999999999;
   $.each( itineraries , function( index, itin ){
       if (itin.endTime < minEpoch){
           minEpoch = itin.endTime;
@@ -232,9 +251,9 @@ function earlierAdvice(){
   plannerreq.date = epochtoIS08601date(minEpoch);
   plannerreq.time = epochtoIS08601time(minEpoch);
 
-  var url = planningserver + jQuery.param(makeBliksemReq(plannerreq));
+  var url = planningserver + jQuery.param(requestGenerator(plannerreq));
   $.get( url, function( data ) {
-    if (!('itineraries' in data.plan) || data.plan.itineraries.length == 0){
+    if ( !itineraryDataIsValid(data) ){
         return;
     }
     var startDate = $('#planner-advice-list').find('.planner-advice-dateheader').first().html();
@@ -252,11 +271,21 @@ function earlierAdvice(){
 }
 
 function itinButton(itin){
-    var itinButton = $('<button type="button" class="btn btn-default" onclick="renderItinerary('+itineraries.length+',true)"></button>');
+    var _itinButton = $('<button type="button" class="btn btn-default" onclick="renderItinerary('+itineraries.length+',true)"></button>');
     itineraries.push(itin);
-    itinButton.append('<b>'+timeFromEpoch(itin.startTime)+'</b>  <span class="glyphicon glyphicon-arrow-right"></span> <b>'+timeFromEpoch(itin.endTime)+'</b>');
-    itinButton.append('<div>'+Locale.amountTransfers(itin.transfers)+'</div>');
-    return itinButton;
+    _itinButton.append('<b>'+timeFromEpoch(itin.startTime)+'</b>  <span class="glyphicon glyphicon-arrow-right"></span> <b>'+timeFromEpoch(itin.endTime)+'</b>');
+    _itinButton.append('<div>'+Locale.amountTransfers(itin.transfers)+'</div>');
+    return _itinButton;
+}
+
+function itineraryDataIsValid (data) {
+  if (data['error'] && data['error'] !== null && data['error'] !== 'null' ) {
+    return false;
+  }
+  if ( !('itineraries' in data.plan) || data.plan.itineraries.length === 0 ) {
+    return false;
+  }
+  return  true;
 }
 
 function laterAdvice(){
@@ -264,7 +293,7 @@ function laterAdvice(){
      return false;
   }
   $('#planner-advice-later').button('loading');
-  var maxEpoch = 0
+  var maxEpoch = 0;
   $.each( itineraries , function( index, itin ){
       if (itin.startTime > maxEpoch){
           maxEpoch = itin.startTime;
@@ -275,10 +304,10 @@ function laterAdvice(){
   plannerreq.arriveBy = false;
   plannerreq.date = epochtoIS08601date(maxEpoch);
   plannerreq.time = epochtoIS08601time(maxEpoch);
-  var url = planningserver + jQuery.param(makeBliksemReq(plannerreq));
+  var url = planningserver + jQuery.param(requestGenerator(plannerreq));
   console.log(decodeURIComponent(url));
   $.get( url, function( data ) {
-    if (!('itineraries' in data.plan) || data.plan.itineraries.length == 0){
+    if (!itineraryDataIsValid(data)){
         return;
     }
     var startDate = $('#planner-advice-list').find('.planner-advice-dateheader').last().html();
@@ -322,14 +351,14 @@ function timeFromEpoch(epoch){
 var itineraries = null;
 
 function legItem(leg){
-    var legItem = $('<li class="list-group-item advice-leg"><div></div></li>');
+    var _legItem = $('<li class="list-group-item advice-leg"><div></div></li>');
     if (leg.mode == 'WALK'){
         if (leg.from.name == leg.to.name){
             return;
         }
-        legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+Locale.walk+'</b></h4></div>');
+        _legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+Locale.walk+'</b></h4></div>');
     } else {
-        legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+leg.route+'</b> '+leg.headsign.replace(" via ", " "+Locale.via.toLowerCase()+" ")+'<span class="leg-header-agency-name"><small>'+leg.agencyName+'</small></span></h4>');
+        _legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+leg.route+'</b> '+leg.headsign.replace(" via ", " "+Locale.via.toLowerCase()+" ")+'<span class="leg-header-agency-name"><small>'+leg.agencyName+'</small></span></h4>');
     }
     var startTime = timeFromEpoch(leg.startTime-(leg.departureDelay ? leg.departureDelay : 0)*1000);
     var delayMin = (leg.departureDelay/60)|0;
@@ -340,12 +369,12 @@ function legItem(leg){
         startTime += '<span class="delay"> +'+ delayMin+'</span>';
     }else if (delayMin > 0){
         startTime += '<span class="early"> '+ delayMin+'</span>';
-    }else if (leg.departureDelay != null){
+    }else if (leg.departureDelay !== null){
         startTime += '<span class="ontime"> ✓</span>';
     }
 
     var endTime = timeFromEpoch(leg.endTime-(leg.arrivalDelay ? leg.arrivalDelay : 0)*1000);
-    var delayMin = (leg.arrivalDelay/60)|0;
+    delayMin = (leg.arrivalDelay/60)|0;
     if ((leg.arrivalDelay%60)>=30){
         delayMin += 1;
     }
@@ -353,25 +382,25 @@ function legItem(leg){
         endTime += '<span class="delay"> +'+ delayMin+'</span>';
     }else if (delayMin > 0){
         endTime += '<span class="early"> '+ delayMin+'</span>';
-    }else if (leg.arrivalDelay != null){
+    }else if (leg.arrivalDelay !== null){
         endTime += '<span class="ontime"> ✓</span>';
     }
 
     if (leg.from.platformCode && leg.mode == 'RAIL'){
-        legItem.append('<div><b>'+startTime+'</b> '+leg.from.name+' <small class="grey">'+Locale.platformrail+'</small> '+leg.from.platformCode+'</div>');
+        _legItem.append('<div><b>'+startTime+'</b> '+leg.from.name+' <small class="grey">'+Locale.platformrail+'</small> '+leg.from.platformCode+'</div>');
     }else if (leg.from.platformCode && leg.mode != 'WALK'){
-        legItem.append('<div><b>'+startTime+'</b> '+leg.from.name+' <small class="grey">'+Locale.platform+'</small> '+leg.from.platformCode+'</div>');
+        _legItem.append('<div><b>'+startTime+'</b> '+leg.from.name+' <small class="grey">'+Locale.platform+'</small> '+leg.from.platformCode+'</div>');
     }else{
-        legItem.append('<div><b>'+startTime+'</b> '+leg.from.name+'</div>');
+        _legItem.append('<div><b>'+startTime+'</b> '+leg.from.name+'</div>');
     }
     if (leg.to.platformCode && leg.mode == 'RAIL'){
-        legItem.append('<div><b>'+endTime+'</b> '+leg.to.name+' <small class="grey">'+Locale.platformrail+'</small> '+leg.to.platformCode+'</div>');
+        _legItem.append('<div><b>'+endTime+'</b> '+leg.to.name+' <small class="grey">'+Locale.platformrail+'</small> '+leg.to.platformCode+'</div>');
     }else if (leg.to.platformCode && leg.mode != 'WALK'){
-        legItem.append('<div><b>'+endTime+'</b> '+leg.to.name+' <small class="grey">'+Locale.platform+'</small> '+leg.to.platformCode+'</div>');
+        _legItem.append('<div><b>'+endTime+'</b> '+leg.to.name+' <small class="grey">'+Locale.platform+'</small> '+leg.to.platformCode+'</div>');
     }else{
-        legItem.append('<div><b>'+endTime+'</b> '+leg.to.name+'</div>');
+        _legItem.append('<div><b>'+endTime+'</b> '+leg.to.name+'</div>');
     }
-    return legItem;
+    return _legItem;
 }
 
 function renderItinerary(idx,moveto){
@@ -391,15 +420,15 @@ function renderItinerary(idx,moveto){
 }
 
 function itinButton(itin){
-    var itinButton = $('<button type="button" class="btn btn-default planner-advice-itinbutton" onclick="renderItinerary('+itineraries.length+',true)"></button>');
+    var _itinButton = $('<button type="button" class="btn btn-default planner-advice-itinbutton" onclick="renderItinerary('+itineraries.length+',true)"></button>');
     itineraries.push(itin);
-    itinButton.append('<b>'+timeFromEpoch(itin.startTime)+'</b>  <span class="glyphicon glyphicon-arrow-right"></span> <b>'+timeFromEpoch(itin.endTime)+'</b>');
-    itinButton.append('<div>'+Locale.amountTransfers(itin.transfers)+'</div>');
-    return itinButton;
+    _itinButton.append('<b>'+timeFromEpoch(itin.startTime)+'</b>  <span class="glyphicon glyphicon-arrow-right"></span> <b>'+timeFromEpoch(itin.endTime)+'</b>');
+    _itinButton.append('<div>'+Locale.amountTransfers(itin.transfers)+'</div>');
+    return _itinButton;
 }
 
 function planItinerary(plannerreq){
-  var url = planningserver + jQuery.param(makeBliksemReq(plannerreq));
+  var url = planningserver + jQuery.param(requestGenerator(plannerreq));
   $('#planner-advice-container').prepend('<div class="progress progress-striped active">'+
   '<div class="progress-bar"  role="progressbar" aria-valuenow="100" aria-valuemin="100" aria-valuemax="100" style="width: 100%">'+
   '<span class="sr-only">'+Locale.loading+'</span></div></div>');
@@ -407,10 +436,10 @@ function planItinerary(plannerreq){
   $('#planner-leg-list').html('');
   $.get( url, function( data ) {
     $('#planner-leg-list').html('');
-    itineraries = []
+    itineraries = [];
     $('#planner-advice-list').html('');
     $('.progress.progress-striped.active').remove();
-    if (!('itineraries' in data.plan) || data.plan.itineraries.length == 0){
+    if (!itineraryDataIsValid(data)){
         $('#planner-advice-container').prepend('<div class="row alert alert-danger" role="alert">'+Locale.noAdviceFound+'</div>');
         return;
     }
@@ -434,7 +463,7 @@ function planItinerary(plannerreq){
 }
 
 function makePlanRequest(){
-  plannerreq = {}
+  var plannerreq = {};
   plannerreq.fromPlace = $('#planner-options-from').val();
   plannerreq.fromLatLng = $('#planner-options-from-latlng').val();
   plannerreq.toPlace = $('#planner-options-dest').val();
@@ -503,14 +532,14 @@ function setupSubmit(){
        }
        if (validate()){submit();}
     });
-};
+}
 
 function setTime(iso8601){
     if(Modernizr.inputtypes.time){
         $('#planner-options-time').val(iso8601.slice(0,5));
     }else{
         var val = iso8601.split(':');
-        var secs = parseInt(val[0])*60*60+parseInt(val[1])*60;
+        var secs = parseInt(val[0],10)*60*60+parseInt(val[1],10)*60;
         var hours = String(Math.floor(secs / (60 * 60)) % 24);
         var divisor_for_minutes = secs % (60 * 60);
         var minutes = String(Math.floor(divisor_for_minutes / 60));
@@ -526,7 +555,7 @@ function setupDatetime(){
         $('#planner-options-timeformat').attr('aria-hidden',true);
     }
     setTime(String(currentTime.getHours()).lpad('0',2)+':'+String(currentTime.getMinutes()).lpad('0',2));
-    function pad(n) { return n < 10 ? '0' + n : n }
+    function pad(n) { return n < 10 ? '0' + n : n; }
     var date = currentTime.getFullYear() + '-' + pad(currentTime.getMonth() + 1) + '-' + pad(currentTime.getDate());
     setDate(date);
     $("#planner-options-date").datepicker( {
@@ -550,11 +579,11 @@ function setupDatetime(){
         $('#planner-options-dateformat').hide();
         $('#planner-options-dateformat').attr('aria-hidden',true);
     }
-};
+}
 
 function setDate(iso8601){
     parts = iso8601.split('-');
-    var d = new Date(parts[0],parseInt(parts[1])-1,parts[2]);
+    var d = new Date(parts[0],parseInt(parts[1],10)-1,parts[2]);
     $('#planner-options-date').val(String(d.getDate()).lpad('0',2)+'-'+String((d.getMonth()+1)).lpad('0',2)+'-'+String(d.getFullYear()));
 }
 
@@ -569,16 +598,16 @@ function getDate(){
       }else if (elements[2].length == 4){
         year = elements[2];
       }
-      if (parseInt(year) < 2013){
+      if (parseInt(year,10) < 2013){
         return null;
       }
     }
-    if (parseInt(elements[1]) >= 1 && parseInt(elements[1]) <= 12){
+    if (parseInt(elements[1],10) >= 1 && parseInt(elements[1],10) <= 12){
       month = elements[1];
     }else{
       return null;
     }
-    if (parseInt(elements[1]) >= 1 && parseInt(elements[1]) <= 31){
+    if (parseInt(elements[1],10) >= 1 && parseInt(elements[1],10) <= 31){
       day = elements[0];
     }else{
       return null;
@@ -592,17 +621,19 @@ function getTime(){
         return $('#planner-options-time').val();
     } else {
         var val = $('#planner-options-time').val().split(':');
-        if (val.length == 1 && val[0].length <= 2 && !isNaN(parseInt(val[0]))){
-            var hours = val[0];
-            var time = hours.lpad('0',2)+':00';
+        var hours;
+        var time;
+        if (val.length === 1 && val[0].length <= 2 && !isNaN(parseInt(val[0],10))){
+            hours = val[0];
+            time = hours.lpad('0',2)+':00';
             $('#planner-options-time').val(time);
             return time;
-        }else if (val.length == 2 && !isNaN(parseInt(val[0])) && !isNaN(parseInt(val[1]))){
-            var secs = parseInt(val[0])*60*60+parseInt(val[1])*60;
-            var hours = String(Math.floor(secs / (60 * 60)) % 24);
+        }else if (val.length == 2 && !isNaN(parseInt(val[0],10)) && !isNaN(parseInt(val[1],10))){
+            var secs = parseInt(val[0],10)*60*60+parseInt(val[1],10)*60;
+            hours = String(Math.floor(secs / (60 * 60)) % 24);
             var divisor_for_minutes = secs % (60 * 60);
             var minutes = String(Math.floor(divisor_for_minutes / 60));
-            var time = hours.lpad('0',2)+':'+minutes.lpad('0',2);
+            time = hours.lpad('0',2)+':'+minutes.lpad('0',2);
             $('#planner-options-time').val(time);
             return time;
         }
