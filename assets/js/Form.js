@@ -31,6 +31,7 @@ jQuery.unparam = function (value) {
 };
 
 $(document).ready(function() {
+  switchLocale();
   initializeForms();
   if(window.location.hash) {
     restoreFromHash(window.location.hash);
@@ -78,12 +79,13 @@ defaultGeocoders['bliksem'] = function( request, response ) {
 var Geocoder = Geocoder || {};
 Geocoder.geocoder = defaultGeocoders[config.geocoder];
 
-switchLocale();
 
 function initializeForms(){
     setupAutoComplete();
     setupDatetime();
     setupSubmit();
+    setupModeInputGroup();
+
     if ($( "#planner-options-from" ).val() === ''){
         $( "#planner-options-from-latlng" ).val('');
     }
@@ -213,9 +215,9 @@ defaultRequestGenerators['otp'] = function (plannerreq){
   otpReq['date']                  = plannerreq['date'];
   otpReq['time']                  = plannerreq['time'];
   otpReq['showIntermediateStops'] = plannerreq['showIntermediateStops'];
-  // TODO: Allow these to be set through the UI
+  otpReq['mode']                  = plannerreq['mode'];
+  // TODO: Allow these to be set through the UI?
   otpReq['maxWalkDistance']       = 2000;
-  otpReq['mode']                  = 'TRANSIT,WALK';
   return otpReq;
 };
 
@@ -357,6 +359,8 @@ function legItem(leg){
             return;
         }
         _legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+Locale.walk+'</b></h4></div>');
+    } else if (leg.mode === 'CAR') {
+        _legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+Locale.CAR+'</b></h4>');
     } else {
         _legItem.append('<div class="list-group-item-heading"><h4 class="leg-header"><b>'+leg.route+'</b> '+leg.headsign.replace(" via ", " "+Locale.via.toLowerCase()+" ")+'<span class="leg-header-agency-name"><small>'+leg.agencyName+'</small></span></h4>');
     }
@@ -427,6 +431,60 @@ function itinButton(itin){
     return _itinButton;
 }
 
+/**
+ * mode input rendering
+ */
+
+function setupModeInputGroup () {
+  if (!config.modes || config.modes.length < 2) {
+    console.info('no modes to select:: ', config.modes);
+    return;
+  }
+  var _modeInputGroupEl = modeInputGroupEl();
+  // Clear div
+  _modeInputGroupEl.html('');
+  // Fill div
+  var html = '';
+  for (var i = 0; i < config.modes.length; i++) {
+    html += modeRadioButtonHtml(config.modes[i], config.default_mode);
+  }
+  _modeInputGroupEl.append(html);
+}
+
+
+function modeInputGroupEl () {
+  if (!cached_modeInputGroupEl) {
+    cached_modeInputGroupEl = $('#planner-options-inputgroup-mode');
+  }
+  return cached_modeInputGroupEl;
+}var cached_modeInputGroupEl = null;
+
+function modeRadioButtonHtml(mode, selected_mode) {
+  return '<label class="btn btn-large">'+
+    '<input type="radio" id="'+mode+'" name="mode" autocomplete="off" ' + ( mode === selected_mode?'checked="true"': '' ) + '> '+ Locale[mode]+
+  '</label>';
+}
+
+function checkedModeId() {
+  var checked = modeInputGroupEl().find(':checked'); // find by pseudoclass 
+  if (checked) {
+    return checked.attr('id');
+  }
+  return null;
+}
+
+function setMode(mode) {
+  var toBeChecked = modeInputGroupEl().find('#'+mode);
+  // uncheck all
+  modeInputGroupEl().find('[type="radio"]').removeAttr('checked');
+  // check set mode
+  toBeChecked.attr('checked',true);
+}
+
+/**
+ * mode input rendering END
+ */
+
 function planItinerary(plannerreq){
   var url = planningserver + jQuery.param(requestGenerator(plannerreq));
   $('#planner-advice-container').prepend('<div class="progress progress-striped active">'+
@@ -471,6 +529,7 @@ function makePlanRequest(){
   plannerreq.time = getTime();
   plannerreq.date = getDate();
   plannerreq.arriveBy = false;
+  plannerreq.mode = checkedModeId();
   return plannerreq;
 }
 
@@ -498,6 +557,9 @@ function restoreFromHash(){
     }
     if ('date' in plannerreq){
       setDate(plannerreq['date']);
+    }
+    if ('mode' in plannerreq){
+      setMode(plannerreq['mode']);
     }
     if ('fromPlace' in plannerreq){
         $('#planner-options-from').val(plannerreq['fromPlace']);
@@ -726,6 +788,8 @@ function setupAutoComplete(){
 }
 
 function switchLocale() {
+  // var _locale = $.extend({}, Locale);
+  Locale = Locale[config['locale']] || Locale['en'];
 	$(".label-from").text(Locale.from);
 	$(".label-via").text(Locale.via);
 	$(".label-dest").text(Locale.to);
