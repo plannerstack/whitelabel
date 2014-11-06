@@ -1,5 +1,6 @@
-var whitelabel_minDate = new Date(2014, 02, 08);
-var whitelabel_maxDate = new Date(2014, 03, 30);
+var whitelabel_minDate = new Date();
+var whitelabel_maxDate = new Date();
+whitelabel_maxDate.setDate(whitelabel_maxDate.getDate()+31);
 
 var bliksemConfig = {
     whitelabel_prefix   : 'https://1313.nl',
