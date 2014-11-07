@@ -221,6 +221,23 @@ defaultRequestGenerators['otp'] = function (plannerreq){
   return otpReq;
 };
 
+defaultRequestGenerators['mmri-tester'] = function (plannerreq){
+  var req = { 'to':{}, 'from':{} };
+
+  req['id']                     = '[CHANGE ME]';
+  req['comment']                = '[CHANGE ME]';
+  req['timeType']               = plannerreq['arriveBy'] ? 'A' : 'D';
+  req['time']                   = plannerreq['date'] + 'T' + plannerreq['time'];
+  req['from']['latitude']       = parseFloat(plannerreq['fromLatLng'].split(',')[0]);
+  req['from']['longitude']      = parseFloat(plannerreq['fromLatLng'].split(',')[1]);
+  req['from']['description']    = plannerreq['fromPlace'];
+  req['to']['latitude']         = parseFloat(plannerreq['toLatLng'].split(',')[0]);
+  req['to']['longitude']        = parseFloat(plannerreq['toLatLng'].split(',')[1]);
+  req['to']['description']      = plannerreq['toPlace'];
+
+  return req;
+};
+
 var requestGenerator = defaultRequestGenerators[config.requestGenerator];
 
 function epochtoIS08601date(epoch){
@@ -813,3 +830,22 @@ function switchLocale() {
 	$("#planner-options-dest").attr('placeholder', Locale.geocoderInput).attr('title', Locale.to);
 	$("#planner-options-submit").attr('data-loading-text', Locale.loading);
 }
+
+
+/**
+ * DEBUG STUFF
+ * TODO: Make sure these bindings and functions are set through the config aka: DEBUG:true || false;
+ * 
+ */
+
+var DEBUG = {};
+DEBUG['mrri_test_object'] = function () {
+  alert(JSON.stringify(defaultRequestGenerators['mmri-tester'](makePlanRequest()), undefined, 4));
+};
+
+$(document).on("keypress", function(e) {
+  console.warn(e.altKey, e.which);
+  if ( e.altKey && e.which === 181 ) {    /* alt-M */
+    DEBUG['mrri_test_object']();
+  }
+});
