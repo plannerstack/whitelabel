@@ -15,7 +15,7 @@ var config = {
 
 
 var otpConfig = {
-    whitelabel_prefix   : 'http://opentripplanner.nl',
+    whitelabel_prefix   : 'http://planner.plannerstack.org',
     whitelabel_plan_path: 'otp/routers/default/plan',
     route_planner       : 'otp',
     geocoder            : 'bag42',

@@ -42,10 +42,10 @@ var currentTime = new Date();
 var defaultGeocoders = {};
 defaultGeocoders['bag42'] = function( request, response ) {
   $.ajax({
-    url: "http://bag42.nl/api/v0/geocode/json",
+    url: "http://bag42.plannerstack.com/api/v0/geocode/json",
     dataType: "json",
     data: {
-      address : request.term
+      address : request.term + "*"
     },
     success: function( data ) {
       response( $.map( data.results, function( item ) {
@@ -844,7 +844,6 @@ DEBUG['mrri_test_object'] = function () {
 };
 
 $(document).on("keypress", function(e) {
-  console.warn(e.altKey, e.which);
   if ( e.altKey && e.which === 181 ) {    /* alt-M */
     DEBUG['mrri_test_object']();
   }
