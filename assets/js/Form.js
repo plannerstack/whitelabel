@@ -42,7 +42,7 @@ var currentTime = new Date();
 var defaultGeocoders = {};
 defaultGeocoders['bag42'] = function( request, response ) {
   $.ajax({
-    url: "http://bag42.plannerstack.com/api/v0/geocode/json",
+    url: "http://demo.bag42.plannerstack.org/api/v0/geocode/otp",
     dataType: "json",
     data: {
       address : request.term + "*"
@@ -227,7 +227,7 @@ defaultRequestGenerators['mmri-tester'] = function (plannerreq){
   req['id']                     = '[CHANGE ME]';
   req['comment']                = '[CHANGE ME]';
   req['timeType']               = plannerreq['arriveBy'] ? 'A' : 'D';
-  req['time']                   = plannerreq['date'] + 'T' + plannerreq['time'];
+  req['time']                   = plannerreq['date'] + 'T' + plannerreq['time']+ ':00'; // match format '%Y-%m-%dT%H:%M:%S'
   req['from']['latitude']       = parseFloat(plannerreq['fromLatLng'].split(',')[0]);
   req['from']['longitude']      = parseFloat(plannerreq['fromLatLng'].split(',')[1]);
   req['from']['description']    = plannerreq['fromPlace'];
