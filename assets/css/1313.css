@@ -1,0 +1,119 @@
+.plannerpanel {
+  background-color : #eeeeee;
+}
+
+/* Class to hide additional accessibiltiy labels */
+.accessibility-helper {
+  border: 0px none;
+  clip: rect(0px, 0px, 0px, 0px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0px;
+  position: absolute;
+  width: 1px;
+}
+
+.planner-options {
+  padding : 24px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.planner-options {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+/* Customize container */
+@media (min-width: 768px) {
+  .planner-options {
+    max-width: 730px;
+  }
+  
+  .planner-form {
+    margin-top: 80px;
+  }
+  
+  .planner-summary {
+    margin-top: 18px;
+  }
+
+  #planner-leg-list.affix {
+    position: fixed;
+    width: 100%
+  }
+}
+
+@media (max-width: 768px) {
+  .affix {
+     position: static;
+  }
+}
+
+/* Remove spin buttons in webkit for form */
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+}
+
+
+/* Equal sizes for input-group-addons in the planner-options panel */
+.planner-options-input-addon{
+  min-width : 5em;
+}
+
+.planner-options-dateinput{
+  padding-top: 4px;
+}
+
+.planner-options-inputgroup-via {
+  padding-top: 4px;
+}
+
+.planner-options-inputgroup-dest {
+  padding-top: 4px;
+}
+
+.planner-options-submitbutton {
+  margin-top: 8px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.planner-advice-container {
+  margin-top: 8px;
+}
+
+.planner-advice-dateheader{
+  text-align: center;
+}
+
+#planner-advice-list{
+  display: table;
+  width: 100%;
+}
+
+.leg-header{
+  display: inline-block;
+}
+
+.leg-header-agency-name{
+  position: absolute;
+  right: 10px;
+}
+
+.grey {
+  color: #999;
+}
+
+.delay {
+  color : red;
+}
+
+.early {
+  color : blue;
+}
+
+.ontime {
+  color : green;
+}
