@@ -1,35 +1,3 @@
-var planningserver = config.whitelabel_prefix+'/'+config.whitelabel_plan_path+'?';
-
-String.prototype.lpad = function(padString, length) {
-    var str = this;
-    while (str.length < length)
-        str = padString + str;
-    return str;
-};
-
-jQuery.unparam = function (value) {
-    if (value.length > 1 && value.charAt(0) == '#'){
-        value = value.substring(1);
-    }
-    var
-    // Object that holds names => values.
-    params = {},
-    // Get query string pieces (separated by &)
-    pieces = value.split('&'),
-    // Temporary variables used in loop.
-    pair, i, l;
-
-    // Loop through query string pieces and assign params.
-    for (i = 0, l = pieces.length; i < l; i++) {
-        pair = pieces[i].split('=', 2);
-        // Repeated parameters with the same name are overwritten. Parameters
-        // with no value get set to boolean true.
-        params[decodeURIComponent(pair[0])] = (pair.length == 2 ?
-            decodeURIComponent(pair[1].replace(/\+/g, ' ')) : true);
-    }
-    return params;
-};
-
 $(document).ready(function() {
   switchLocale();
   initializeForms();
@@ -37,47 +5,6 @@ $(document).ready(function() {
     restoreFromHash(window.location.hash);
   }
 });
-var currentTime = new Date();
-
-var defaultGeocoders = {};
-defaultGeocoders['bag42'] = function( request, response ) {
-  $.ajax({
-    url: "http://demo.bag42.plannerstack.org/api/v0/geocode/json",
-    dataType: "json",
-    data: {
-      address : request.term + "*"
-    },
-    success: function( data ) {
-      response( $.map( data.results, function( item ) {
-      return {
-        label: item.formatted_address,
-        value: item.formatted_address,
-        latlng: item.geometry.location.lat+','+item.geometry.location.lng
-        };
-      }));
-    }
-  });
-};
-
-defaultGeocoders['bliksem'] = function( request, response ) {
-  $.ajax({
-    url: config.whitelabel_prefix+"/geocoder/" + request.term + '*',
-    dataType: "json",
-    success: function( data ) {
-      response( $.map( data.features, function( item ) {
-      return {
-        label: item.properties.search,
-        value: item.properties.search,
-        latlng: item.geometry.coordinates[1]+','+item.geometry.coordinates[0]
-        };
-      }));
-    }
-  });
-};
-
-
-var Geocoder = Geocoder || {};
-Geocoder.geocoder = defaultGeocoders[config.geocoder];
 
 
 function initializeForms(){
@@ -85,6 +12,7 @@ function initializeForms(){
     setupDatetime();
     setupSubmit();
     setupModeInputGroup();
+    setupRouterInputGroup();
 
     if ($( "#planner-options-from" ).val() === ''){
         $( "#planner-options-from-latlng" ).val('');
@@ -92,6 +20,21 @@ function initializeForms(){
     if ($( "#planner-options-dest" ).val() === ''){
         $( "#planner-options-dest-latlng" ).val('');
     }
+}
+
+function changeRouter(id) {
+  var routerSet = Router.setRouterById(id);
+  if (routerSet) {
+    setupModeInputGroup();
+    renderRouterInputGroup();
+    submitIfValid();
+  }
+  return routerSet;
+}
+
+function changeGeocoder(id) {
+  var geocoderSet = Geocoder.setGeocoderById(id);
+  return geocoderSet;
 }
 
 function validate(){
@@ -182,75 +125,6 @@ function showForm(){
   $('#planner-options-submit').button('reset');
 }
 
-function getPrettyDate(){
-   var date = getDate().split('-');
-   date = new Date(date[0],date[1]-1,date[2]);
-   return Locale.days[date.getDay()] + ' ' + date.getDate() + ' ' + Locale.months[date.getMonth()];
-}
-
-var defaultRequestGenerators = {};
-
-defaultRequestGenerators['bliksem'] = function (plannerreq){
-  var bliksemReq = {};
-  if (plannerreq['arriveBy']){
-    bliksemReq['arrive'] = true;
-  }else{
-    bliksemReq['depart'] = true;
-  }
-
-  bliksemReq['from-latlng'] = plannerreq['fromLatLng'];
-  bliksemReq['to-latlng'] = plannerreq['toLatLng'];
-  bliksemReq['date'] = plannerreq['date'] + 'T' + plannerreq['time'];
-  bliksemReq['showIntermediateStops'] = true;
-  return bliksemReq;
-};
-
-defaultRequestGenerators['otp'] = function (plannerreq){
-  // TODO: Just use $.extend()
-  // ?fromPlace=52.008978039788076%2C4.3608856201171875&toPlace=51.918861649083915%2C4.478302001953125&time=10%3A11am&date=11-06-2014&mode=BICYCLE_PARK%2CWALK%2CTRANSIT&maxWalkDistance=804.672&arriveBy=false&wheelchair=false&showIntermediateStops=false
-  var otpReq = {};
-  otpReq['arriveBy']              = plannerreq['arriveBy'];
-  otpReq['fromPlace']             = plannerreq['fromLatLng'];
-  otpReq['toPlace']               = plannerreq['toLatLng'];
-  otpReq['date']                  = plannerreq['date'];
-  otpReq['time']                  = plannerreq['time'];
-  otpReq['showIntermediateStops'] = plannerreq['showIntermediateStops'];
-  otpReq['mode']                  = plannerreq['mode'];
-  // TODO: Allow these to be set through the UI?
-  otpReq['maxWalkDistance']       = 2000;
-  return otpReq;
-};
-
-defaultRequestGenerators['mmri-tester'] = function (plannerreq){
-  var req = { 'to':{}, 'from':{} };
-
-  req['id']                     = '[CHANGE ME]';
-  req['comment']                = '[CHANGE ME]';
-  req['timeType']               = plannerreq['arriveBy'] ? 'A' : 'D';
-  req['time']                   = plannerreq['date'] + 'T' + plannerreq['time']+ ':00'; // match format '%Y-%m-%dT%H:%M:%S'
-  req['from']['latitude']       = parseFloat(plannerreq['fromLatLng'].split(',')[0]);
-  req['from']['longitude']      = parseFloat(plannerreq['fromLatLng'].split(',')[1]);
-  req['from']['description']    = plannerreq['fromPlace'];
-  req['to']['latitude']         = parseFloat(plannerreq['toLatLng'].split(',')[0]);
-  req['to']['longitude']        = parseFloat(plannerreq['toLatLng'].split(',')[1]);
-  req['to']['description']      = plannerreq['toPlace'];
-
-  return req;
-};
-
-var requestGenerator = defaultRequestGenerators[config.requestGenerator];
-
-function epochtoIS08601date(epoch){
-  var d = new Date(epoch);
-  var date = String(d.getFullYear())+'-'+String((d.getMonth()+1)).lpad('0',2)+'-'+String(d.getDate()).lpad('0',2);
-  return date;
-}
-
-function epochtoIS08601time(epoch){
-  var d = new Date(epoch);
-  var time = d.getHours().toString().lpad('0',2)+':'+d.getMinutes().toString().lpad('0',2)+':'+d.getSeconds().toString().lpad('0',2);
-  return time;
-}
 
 function earlierAdvice(){
   if (!itineraries){
@@ -270,8 +144,7 @@ function earlierAdvice(){
   plannerreq.date = epochtoIS08601date(minEpoch);
   plannerreq.time = epochtoIS08601time(minEpoch);
 
-  var url = planningserver + jQuery.param(requestGenerator(plannerreq));
-  $.get( url, function( data ) {
+  Router.doRequest(plannerreq, function (data) {
     if ( !itineraryDataIsValid(data) ){
         return;
     }
@@ -323,9 +196,8 @@ function laterAdvice(){
   plannerreq.arriveBy = false;
   plannerreq.date = epochtoIS08601date(maxEpoch);
   plannerreq.time = epochtoIS08601time(maxEpoch);
-  var url = planningserver + jQuery.param(requestGenerator(plannerreq));
-  console.log(decodeURIComponent(url));
-  $.get( url, function( data ) {
+
+  Router.doRequest(plannerreq, function (data) {
     if (!itineraryDataIsValid(data)){
         return;
     }
@@ -343,28 +215,6 @@ function laterAdvice(){
     $('#planner-advice-later').button('reset');
   });
   return false;
-}
-
-function prettyDateEpoch(epoch){
-  var date = new Date(epoch);
-  return Locale.days[date.getDay()] + ' ' + date.getDate() + ' ' + Locale.months[date.getMonth()];
-}
-
-function timeFromEpoch(epoch){
-  var date = new Date(epoch);
-  var minutes = date.getMinutes();
-  var hours = date.getHours();
-  if (date.getSeconds()>= 30){
-      minutes += 1;
-  }
-  if (minutes >= 60){
-      hours += minutes / 60;
-      minutes = minutes % 60;
-  }
-  if (hours >= 24){
-      hours = hours % 24;
-  }
-  return String(hours).lpad('0',2)+':'+String(minutes).lpad('0',2);
 }
 
 var itineraries = null;
@@ -449,21 +299,68 @@ function itinButton(itin){
 }
 
 /**
+ * router input rendering
+ */
+
+function setupRouterInputGroup() {
+  var _routerInputGroupEl = routerInputGroupEl();
+  renderRouterInputGroup();
+  _routerInputGroupEl.on('change', 'input', function (e) {
+    onRouterInputChange(e);
+  });
+}
+
+function renderRouterInputGroup() {
+  var context = Router.getContext();
+  var _routerInputGroupEl = routerInputGroupEl();
+  _routerInputGroupEl.html(routerInputHtml(context));
+  return true;
+}
+
+function routerInputGroupEl () {
+  if (!cached_routerInputGroupEl) {
+    cached_routerInputGroupEl = $('#planner-options-inputgroup-router');
+  }
+  return cached_routerInputGroupEl;
+}var cached_routerInputGroupEl = null;
+
+function onRouterInputChange (e) {
+  var id = $(e.target).attr('id');
+  changeRouter(id);
+}
+
+
+function routerInputHtml (context) {
+  var html = '<div class="btn-group">';
+  for (var i = 0; i < context.routers.length; i++) {
+    html += '<label class="btn btn-large">'+
+      '<input type="radio" id="'+context.routers[i].id+'" name="mode" autocomplete="off" ' + ( context.routers[i].selected?'checked="true"': '' ) + '> '+ context.routers[i].name+
+    '</label>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/**
  * mode input rendering
  */
 
 function setupModeInputGroup () {
-  if (!config.modes || config.modes.length < 2) {
-    console.info('no modes to select:: ', config.modes);
-    return;
-  }
+  var modes = Router.getSupportedModes();
   var _modeInputGroupEl = modeInputGroupEl();
+
   // Clear div
   _modeInputGroupEl.html('');
+
+  if (!modes || modes.length < 2) {
+    console.info('no modes to select:: ', modes);
+    return;
+  }
+  
   // Fill div
   var html = '';
-  for (var i = 0; i < config.modes.length; i++) {
-    html += modeRadioButtonHtml(config.modes[i], config.default_mode);
+  for (var i = 0; i < modes.length; i++) {
+    html += modeRadioButtonHtml(modes[i], modes[0]);
   }
   _modeInputGroupEl.append(html);
 }
@@ -487,7 +384,8 @@ function checkedModeId() {
   if (checked) {
     return checked.attr('id');
   }
-  return null;
+  // fallback to just the first mode of the Router
+  return Router.getSupportedModes()[0];
 }
 
 function setMode(mode) {
@@ -503,13 +401,12 @@ function setMode(mode) {
  */
 
 function planItinerary(plannerreq){
-  var url = planningserver + jQuery.param(requestGenerator(plannerreq));
   $('#planner-advice-container').prepend('<div class="progress progress-striped active">'+
   '<div class="progress-bar"  role="progressbar" aria-valuenow="100" aria-valuemin="100" aria-valuemax="100" style="width: 100%">'+
   '<span class="sr-only">'+Locale.loading+'</span></div></div>');
   $('#planner-advice-list').html('');
   $('#planner-leg-list').html('');
-  $.get( url, function( data ) {
+  Router.doRequest(plannerreq, function (data) {
     $('#planner-leg-list').html('');
     itineraries = [];
     $('#planner-advice-list').html('');
@@ -605,12 +502,16 @@ function setupSubmit(){
         return false;
     });
     $('#planner-options-submit').click(function(e){
-       var $theForm = $(this).closest('form');
-       if (( typeof($theForm[0].checkValidity) == "function" ) && !$theForm[0].checkValidity()) {
-           return;
-       }
-       if (validate()){submit();}
+      submitIfValid();
     });
+}
+
+function submitIfValid () {
+  var $theForm = $('form');
+  if (( typeof($theForm[0].checkValidity) == "function" ) && !$theForm[0].checkValidity()) {
+    return;
+  }
+  if (validate()){submit();}
 }
 
 function setTime(iso8601){
@@ -633,6 +534,7 @@ function setupDatetime(){
         $('#planner-options-timeformat').hide();
         $('#planner-options-timeformat').attr('aria-hidden',true);
     }
+    var currentTime = new Date();
     setTime(String(currentTime.getHours()).lpad('0',2)+':'+String(currentTime.getMinutes()).lpad('0',2));
     function pad(n) { return n < 10 ? '0' + n : n; }
     var date = currentTime.getFullYear() + '-' + pad(currentTime.getMonth() + 1) + '-' + pad(currentTime.getDate());
@@ -644,8 +546,8 @@ function setupDatetime(){
        monthNames: Locale.months,
        defaultDate: 0,
        hideIfNoPrevNext: true,
-       minDate: whitelabel_minDate,
-       maxDate: whitelabel_maxDate
+       minDate: config.minDate,
+       maxDate: config.maxDate
     });
 
     /* Read aloud the selected dates */
@@ -670,6 +572,7 @@ function getDate(){
     var elements = $('#planner-options-date').val().split('-');
     var month = null;
     var day = null;
+    var currentTime = new Date();
     var year = String(currentTime.getFullYear());
     if (elements.length == 3){
       if (elements[2].length == 2){
@@ -726,7 +629,7 @@ function setupAutoComplete(){
         minLength: 3,
         //appendTo: "#planner-options-from-autocompletecontainer",
         messages : Locale.autocompleteMessages,
-        source: Geocoder.geocoder,
+        source: Geocoder.requestProxy,
         search: function( event, ui ) {
             $( "#planner-options-from-latlng" ).val( "" );
         },
@@ -753,7 +656,7 @@ function setupAutoComplete(){
         minLength: 3,
         //appendTo: "#planner-options-via-autocompletecontainer",
         messages : Locale.autocompleteMessages,
-        source: Geocoder.geocoder,
+        source: Geocoder.requestProxy,
         search: function( event, ui ) {
             $( "#planner-options-from-latlng" ).val( "" );
         },
@@ -780,7 +683,7 @@ function setupAutoComplete(){
         minLength: 3,
         //appendTo: "#planner-options-dest-autocompletecontainer",
         messages : Locale.autocompleteMessages,
-        source: Geocoder.geocoder,
+        source: Geocoder.requestProxy,
         search: function( event, ui ) {
             $( "#planner-options-dest-latlng" ).val( "" );
         },
@@ -838,9 +741,25 @@ function switchLocale() {
  * 
  */
 
-var DEBUG = {};
+var DEBUG = DEBUG || {};
+DEBUG['mmri-test-input'] = function (plannerreq){
+  var req = { 'to':{}, 'from':{} };
+
+  req['id']                     = '[CHANGE ME]';
+  req['comment']                = '[CHANGE ME]';
+  req['timeType']               = plannerreq['arriveBy'] ? 'A' : 'D';
+  req['time']                   = plannerreq['date'] + 'T' + plannerreq['time']+ ':00'; // match format '%Y-%m-%dT%H:%M:%S'
+  req['from']['latitude']       = parseFloat(plannerreq['fromLatLng'].split(',')[0]);
+  req['from']['longitude']      = parseFloat(plannerreq['fromLatLng'].split(',')[1]);
+  req['from']['description']    = plannerreq['fromPlace'];
+  req['to']['latitude']         = parseFloat(plannerreq['toLatLng'].split(',')[0]);
+  req['to']['longitude']        = parseFloat(plannerreq['toLatLng'].split(',')[1]);
+  req['to']['description']      = plannerreq['toPlace'];
+
+  return req;
+};
 DEBUG['mrri_test_object'] = function () {
-  alert(JSON.stringify(defaultRequestGenerators['mmri-tester'](makePlanRequest()), undefined, 4));
+  alert(JSON.stringify(DEBUG['mmri-test-input'](makePlanRequest()), undefined, 4));
 };
 
 $(document).on("keypress", function(e) {

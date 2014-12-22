@@ -1,27 +1,19 @@
-.plannerpanel {
-  background-color : #eeeeee;
+body {
+  background-color:#EEE; //00AEEF
 }
 
-/* Class to hide additional accessibiltiy labels */
-.accessibility-helper {
-  border: 0px none;
-  clip: rect(0px, 0px, 0px, 0px);
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  padding: 0px;
-  position: absolute;
-  width: 1px;
+.plannerpanel {
+  border-radius: 10px;
+  background-color : #EEE;
+  background-color : rgba(0,0,0,0.2);
 }
+
+
 
 .planner-options {
   padding : 24px;
   margin-left: auto;
   margin-right: auto;
-}
-
-.planner-options {
-  border-bottom: 1px solid #e5e5e5;
 }
 
 /* Customize container */
@@ -116,4 +108,17 @@ input[type=number]::-webkit-inner-spin-button {
 
 .ontime {
   color : green;
+}
+
+
+/* Class to hide additional accessibiltiy labels */
+.accessibility-helper {
+  border: 0 none;
+  clip: rect(0px, 0px, 0px, 0px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
 }
