@@ -42,7 +42,7 @@ var currentTime = new Date();
 var defaultGeocoders = {};
 defaultGeocoders['bag42'] = function( request, response ) {
   $.ajax({
-    url: "http://demo.bag42.plannerstack.org/api/v0/geocode/otp",
+    url: "http://demo.bag42.plannerstack.org/api/v0/geocode/json",
     dataType: "json",
     data: {
       address : request.term + "*"
